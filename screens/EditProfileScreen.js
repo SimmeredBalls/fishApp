@@ -39,25 +39,45 @@ export default function EditProfileScreen() {
   }
 
   async function pickImage() {
+    try {
+      console.log("STEP 1: Button pressed");
 
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [1,1],
-      quality: 0.7
-    });
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      console.log("STEP 2: Permission result:", permission);
 
-    if (!result.canceled) {
+      if (permission.status !== "granted") {
+        Alert.alert("Permission denied", "Photo access is required.");
+        return;
+      }
 
-      const uri = result.assets[0].uri;
+      console.log("STEP 3: Opening image picker...");
 
-      uploadImage(uri);
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.7,
+      });
 
+      console.log("STEP 4: Picker result:", result);
+
+      if (!result.canceled) {
+        const uri = result.assets[0].uri;
+        console.log("STEP 5: Selected image URI:", uri);
+
+        await uploadImage(uri);
+      } else {
+        console.log("STEP 5: User cancelled picker");
+      }
+
+    } catch (err) {
+      console.log("ERROR in pickImage:", err);
     }
   }
 
   async function uploadImage(uri) {
     try {
+
       const { data: { user } } = await supabase.auth.getUser();
 
       if (!user) {
@@ -92,15 +112,17 @@ export default function EditProfileScreen() {
         .from("avatars")
         .getPublicUrl(filePath);
 
-      console.log("Public URL:", publicUrlData.publicUrl);
+      const newUrl = `${publicUrlData.publicUrl}?t=${Date.now()}`; // CACHE FIX
 
-      setAvatarUrl(publicUrlData.publicUrl);
+      console.log("Public URL:", newUrl);
+
+      setAvatarUrl(newUrl);
 
     } catch (error) {
       console.log("Unexpected error:", error);
     }
   }
-  
+
   async function updateProfile() {
 
     setLoading(true);
@@ -144,7 +166,6 @@ export default function EditProfileScreen() {
 
       </TouchableOpacity>
 
-
       <Text style={styles.label}>Full Name</Text>
 
       <TextInput
@@ -153,7 +174,6 @@ export default function EditProfileScreen() {
         onChangeText={setFullname}
       />
 
-
       <Text style={styles.label}>Username</Text>
 
       <TextInput
@@ -161,7 +181,6 @@ export default function EditProfileScreen() {
         value={username}
         onChangeText={setUsername}
       />
-
 
       <TouchableOpacity
         style={styles.button}
